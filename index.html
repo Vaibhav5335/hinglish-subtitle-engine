@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hinglish Subtitle Engine</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── HEADER ─────────────────────────────────────── -->
+  <header class="header">
+    <div class="header__inner">
+      <div class="header__logo">
+        <span class="logo-icon">🎬</span>
+        <div>
+          <h1 class="header__title">Hinglish Subtitle Engine</h1>
+          <p class="header__sub">
+            English Audio → English Subs &nbsp;|&nbsp;
+            Hindi Audio → Hinglish Subs
+          </p>
+        </div>
+      </div>
+
+      <!-- Backend Connection Panel -->
+      <div class="connection-panel">
+        <div class="connection-panel__label">Colab Backend URL</div>
+        <div class="connection-panel__row">
+          <input
+            type="text"
+            id="backendUrl"
+            class="url-input"
+            placeholder="https://xxxx-xx-xx-xx-xx.ngrok-free.app"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="connectBtn" class="btn btn--connect">
+            Connect
+          </button>
+        </div>
+        <div id="connectionStatus" class="connection-status">
+          <span class="status-dot status-dot--idle"></span>
+          <span class="status-text">Not connected</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── MAIN ───────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- How it works -->
+    <section class="info-bar">
+      <div class="info-item">
+        <span class="info-icon">🎙️</span>
+        <div>
+          <strong>English Audio</strong>
+          <span>White subtitles, English text</span>
+        </div>
+      </div>
+      <div class="info-divider">→</div>
+      <div class="info-item">
+        <span class="info-icon">🟡</span>
+        <div>
+          <strong>Hindi Audio</strong>
+          <span>Yellow subtitles, Hinglish (Roman)</span>
+        </div>
+      </div>
+      <div class="info-divider">→</div>
+      <div class="info-item">
+        <span class="info-icon">⚡</span>
+        <div>
+          <strong>Auto-detect</strong>
+          <span>No manual language selection needed</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Upload Card -->
+    <section class="card upload-card" id="uploadSection">
+      <h2 class="card__title">Upload Video</h2>
+      <p class="card__subtitle">
+        Supported formats: MP4, MOV, AVI, MKV, WEBM · Max 500MB
+      </p>
+
+      <!-- Drop Zone -->
+      <div
+        class="dropzone"
+        id="dropzone"
+        role="button"
+        tabindex="0"
+        aria-label="Click or drag video file here"
+      >
+        <div class="dropzone__icon">📁</div>
+        <p class="dropzone__primary">
+          Drag & drop your video here
+        </p>
+        <p class="dropzone__secondary">or</p>
+        <label class="btn btn--outline" for="fileInput">
+          Browse File
+        </label>
+        <input
+          type="file"
+          id="fileInput"
+          accept="video/mp4,video/quicktime,video/x-msvideo,
+                  video/x-matroska,video/webm,.mp4,.mov,.avi,
+                  .mkv,.webm"
+          hidden
+        />
+      </div>
+
+      <!-- Selected File Info -->
+      <div class="file-info" id="fileInfo" hidden>
+        <div class="file-info__icon">🎥</div>
+        <div class="file-info__details">
+          <span class="file-info__name" id="fileName">—</span>
+          <span class="file-info__size" id="fileSize">—</span>
+        </div>
+        <button class="file-info__remove" id="removeFile"
+                aria-label="Remove file">✕</button>
+      </div>
+
+      <!-- Options -->
+      <div class="options-row" id="optionsRow" hidden>
+        <label class="toggle-label">
+          <input type="checkbox" id="enableCuts" />
+          <span class="toggle-text">
+            Remove silence gaps
+            <span class="toggle-hint">(VAD-based cutting)</span>
+          </span>
+        </label>
+      </div>
+
+      <!-- Submit -->
+      <button
+        class="btn btn--primary btn--full"
+        id="submitBtn"
+        disabled
+      >
+        Generate Subtitles
+      </button>
+    </section>
+
+    <!-- Progress Card -->
+    <section class="card progress-card" id="progressSection" hidden>
+      <div class="progress-header">
+        <h2 class="card__title">Processing</h2>
+        <span class="job-badge" id="jobBadge">—</span>
+      </div>
+
+      <!-- Mode detected banner -->
+      <div class="mode-banner" id="modeBanner" hidden>
+        <span class="mode-banner__icon" id="modeIcon">—</span>
+        <div class="mode-banner__text">
+          <strong id="modeTitle">—</strong>
+          <span id="modeDesc">—</span>
+        </div>
+      </div>
+
+      <!-- Stage indicators -->
+      <div class="stages" id="stages">
+        <div class="stage" id="stage-ingest">
+          <span class="stage__dot"></span>
+          <span class="stage__label">Ingesting video</span>
+        </div>
+        <div class="stage" id="stage-stt">
+          <span class="stage__dot"></span>
+          <span class="stage__label">Transcribing audio (Whisper)</span>
+        </div>
+        <div class="stage" id="stage-subtitle">
+          <span class="stage__dot"></span>
+          <span class="stage__label">Generating subtitles</span>
+        </div>
+        <div class="stage" id="stage-render">
+          <span class="stage__dot"></span>
+          <span class="stage__label">Rendering final video</span>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progressBar">
+          <div class="progress-bar__fill" id="progressFill"></div>
+        </div>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+
+      <p class="progress-note" id="progressNote">
+        Processing time depends on video length and Colab resources.
+      </p>
+
+      <button class="btn btn--ghost" id="cancelBtn">
+        Cancel & Start Over
+      </button>
+    </section>
+
+    <!-- Result Card -->
+    <section class="card result-card" id="resultSection" hidden>
+      <div class="result-header">
+        <span class="result-tick">✅</span>
+        <h2 class="card__title">Subtitles Ready!</h2>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-box">
+          <span class="stat-box__value" id="statLang">—</span>
+          <span class="stat-box__label">Detected Language</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-box__value" id="statMode">—</span>
+          <span class="stat-box__label">Subtitle Mode</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-box__value" id="statSegs">—</span>
+          <span class="stat-box__label">Subtitle Segments</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-box__value" id="statTime">—</span>
+          <span class="stat-box__label">Processing Time</span>
+        </div>
+      </div>
+
+      <!-- Caption preview table -->
+      <div class="preview-wrap">
+        <h3 class="preview-title">Subtitle Preview</h3>
+        <div class="preview-table-wrap">
+          <table class="preview-table" id="previewTable">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Subtitle Text</th>
+                <th>Mode</th>
+              </tr>
+            </thead>
+            <tbody id="previewBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Download buttons -->
+      <div class="download-row">
+        <button class="btn btn--primary" id="downloadVideoBtn">
+          ⬇️ Download Video with Subtitles
+        </button>
+        <button class="btn btn--outline" id="downloadEdlBtn">
+          📄 Download EDL (JSON)
+        </button>
+      </div>
+
+      <button class="btn btn--ghost btn--full" id="newJobBtn">
+        Process Another Video
+      </button>
+    </section>
+
+    <!-- Error Card -->
+    <section class="card error-card" id="errorSection" hidden>
+      <div class="error-icon">❌</div>
+      <h2 class="card__title">Processing Failed</h2>
+      <p class="error-message" id="errorMessage">—</p>
+      <div class="error-tips">
+        <strong>Common fixes:</strong>
+        <ul>
+          <li>Check your Colab backend is still running</li>
+          <li>Paste a fresh ngrok URL (they expire after 2 hrs)</li>
+          <li>Check video file is not corrupted</li>
+          <li>Ensure video has an audio track</li>
+        </ul>
+      </div>
+      <button class="btn btn--primary" id="retryBtn">
+        Try Again
+      </button>
+    </section>
+
+  </main>
+
+  <!-- ── FOOTER ──────────────────────────────────────── -->
+  <footer class="footer">
+    <p>
+      Powered by
+      <strong>faster-whisper</strong> ·
+      <strong>indic-transliteration</strong> ·
+      <strong>FFmpeg</strong>
+    </p>
+    <p class="footer__note">
+      Backend runs on Google Colab · Frontend hosted on GitHub Pages
+    </p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

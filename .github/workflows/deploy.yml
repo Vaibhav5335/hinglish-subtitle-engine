@@ -1,0 +1,53 @@
+# ============================================================
+# GITHUB ACTIONS: Auto-deploy to GitHub Pages
+# Triggers on every push to main branch
+# ============================================================
+
+name: Deploy Hinglish Subtitle Engine to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main          # Deploy on every push to main
+  workflow_dispatch:  # Allow manual trigger from GitHub UI
+
+# Sets permissions for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment at a time
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout your code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Setup GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      # Step 3: Upload the entire repo as the Pages artifact
+      # Since we have no build step (pure HTML/CSS/JS),
+      # we deploy the root directory directly
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'   # Deploy from root directory
+
+      # Step 4: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
